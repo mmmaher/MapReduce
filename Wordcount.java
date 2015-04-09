@@ -1,6 +1,8 @@
 import java.io.IOException;
 import java.util.*;
 
+import java.lang.StringBuilder;
+
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.io.LongWritable;
@@ -76,12 +78,12 @@ public class Wordcount extends Configured implements Tool {
         @Override
         public void reduce(Text key, Iterable<Text> values, Context context) throws IOException, InterruptedException {
             // write (key, val) for every value
-            String docList = "";
+            StringBuilder docList = new StringBuilder();
             for (Text value : values) {
-                    docList += value + " ";
+                    docList.append(value + " ");
             }
 
-            context.write(key, new Text(docList));
+            context.write(key, new Text(docList.toString()));
         }
 	}
 
