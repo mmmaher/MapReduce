@@ -1,6 +1,8 @@
 import java.io.IOException;
 import java.util.*;
 
+import java.lang.StringBuilder;
+
 import org.json.simple.*;
 
 import org.apache.hadoop.fs.Path;
@@ -49,13 +51,19 @@ public class AdMap extends Configured implements Tool {
 
         Configuration conf = getConf();
 
-        Job job = new Job(conf, "admap job");
+        Job job = new Job(conf, "first admap job");
         job.setJarByClass(AdMap.class);
-
-        job.setMapperClass(AdMap.IdentityMapper.class);
-        job.setReducerClass(AdMap.IdentityReducer.class);
-
+        job.setMapperClass(AdMap.FirstMapper.class);
+        job.setReducerClass(AdMap.FirstReducer.class);
         job.setMapOutputKeyClass(Text.class);
+
+        // Job job_2 = new Job(conf, "second admap job");
+        // job.setJarByClass(AdMap.class);
+        // job.setMapperClass(AdMap.SecondMapper.class);
+        // job.setReducerClass(AdMap.SecondReducer.class);
+        // job.setMapOutputKeyClass(Text.class);
+
+        // String firstOutputPath = "/user/root/first_output"
 
         FileInputFormat.addInputPath(job, new Path(args[0]));
         FileInputFormat.addInputPath(job, new Path(args[1]));
@@ -64,7 +72,7 @@ public class AdMap extends Configured implements Tool {
         return job.waitForCompletion(true) ? 0 : 1;
     }
 
-	public static class IdentityMapper extends Mapper<LongWritable, Text, Text, Text> {
+    public static class FirstMapper extends Mapper<LongWritable, Text, Text, Text> {
         private final static IntWritable one = new IntWritable(1);
         private Text word = new Text();
 
@@ -77,30 +85,172 @@ public class AdMap extends Configured implements Tool {
             // want the ad_id, referrer, and the click rate
             // so pass key == impression id, the ad_id, the referrer, and whether click or impression
 
-            StringBuilder returnvalues = new StringBuilder();
-            StringBuilder impressionid = new StringBuilder();
-            StringBuilder referrer = new StringBuilder();
-
-            // String referrer = "";
-            // String adid = "";
-            // String impressionid = "";
-            // String clickOrImpression = "";
-            // String returnVals = "";
+            String referrer = "";
+            String adid = "";
+            String impressionid = "";
+            String clickOrImpression = "";
+            String returnVals = "";
+            Boolean dontReturn = false;
 
             String filename = ((FileSplit) context.getInputSplit()).getPath().getName();
             String whole = val.toString();
-            int indexOfCurly = whole.indexOf("{");
-            String line = whole.substring(indexOfCurly);
 
-            // String returner = "return this ";
-            // Object entry;
+            // Get only the json part of the string
+            int indexOfCurly = whole.indexOf("{");
+            System.out.println("Whole = " + whole);
+            String line = "";
+            if (indexOfCurly == -1) {
+                line = whole;
+            }
+            else {
+                line = whole.substring(indexOfCurly);
+            }
+            if (whole.equals("")) {
+                dontReturn = true;
+            }
+
             try {
 
                 JSONParser parser = new JSONParser();
                 JSONObject json = (JSONObject)parser.parse(line);
-                referrer.append((String) json.get("referrer"));
-                returnvalues.append((String) json.get("adId"));
-                impressionid.append((String) json.get("impressionId"));
+                referrer = referrer + (String) json.get("referrer");
+                adid = adid + (String) json.get("adId");
+                impressionid = impressionid + (String) json.get("impressionId");
+
+            } catch (ParseException ex) {
+                ex.printStackTrace();
+            }
+            
+            // If there is no referrer, we know it's a click!
+            // If click: return 1
+            // If impression: return json string of referrer and adId
+            if (referrer.equals("null")) {
+                returnVals = "1";
+            } else {
+                JSONObject obj = new JSONObject();
+                obj.put("adId", adid);
+                obj.put("referrer", referrer);
+                returnVals = (String) (obj.toJSONString());
+            }
+
+            if ((impressionid.equals("")) || !(impressionid.equals("null"))) {
+                dontReturn = true;
+            }
+
+            if (!dontReturn) {
+                context.write(new Text(impressionid), new Text(returnVals));
+            }
+
+
+        }
+    }
+
+    public static class FirstReducer extends Reducer<Text, Text, Text, Text> {
+        @Override
+        public void reduce(Text key, Iterable<Text> values, Context context) throws IOException, InterruptedException {
+            double impressions = 0;
+            double clicks = 0;
+            boolean adflag = false;
+            boolean referrerflag = false;
+            String adid = "";
+            String referrer = "";
+
+            System.out.println("Here");
+            System.out.println("Key = " + key);
+
+            
+
+            for (Text value : values) {
+                System.out.println("Value = " + value);
+                adid = value.toString();
+            }
+
+            StringBuilder docList = new StringBuilder();
+            for (Text value : values) {
+                docList.append(value + " ");
+            }
+
+            // for (Text value : values) {
+            //     System.out.println("Value = " + value);
+            //     String line = value.toString();
+            //     String[] data = line.split(" ");
+
+            //     if (data.length > 2) {
+            //         if (!adflag) { adid = adid + data[1]; adflag = true; }
+
+            //         if (data[0].equals("click")) {
+            //             clicks++;
+            //         } else {
+            //             impressions++;
+            //             if (!referrerflag) {
+            //                 referrer = referrer + data[2];
+            //                 referrerflag = true;
+            //             }
+            //         }
+            //     } else { System.out.println("Data too short"); }
+
+            // }
+
+            // String keyString = "[" + referrer + ", " + adid + "]";
+            // double rate = 0.0;
+            // if (clicks + impressions > 0) {
+            //     rate = clicks / (clicks + impressions);
+            // }
+            // else { System.out.println("ERROR tried to divideby zero");}
+            // System.out.println("Clicks: " + clicks);
+            // System.out.println("Impressiosns: " + impressions);
+
+            // context.write(new Text(keyString), new Text(Double.toString(rate)));
+            context.write(key, new Text(docList.toString()));
+            System.out.println("\n\n");
+        }
+    }
+
+// _________________________________NEW MAP AND REDUCE FUNCS BELOW___________________________________________
+// _________________________________NEW MAP AND REDUCE FUNCS BELOW___________________________________________
+
+
+    public static class SecondMapper extends Mapper<LongWritable, Text, Text, Text> {
+        private final static IntWritable one = new IntWritable(1);
+        private Text word = new Text();
+
+        @Override
+        public void map(LongWritable key, Text val, Context context) throws IOException, InterruptedException {
+            // Isolate the impression_id, pass that as the key; the value should be
+            // a click or an impression
+            // ignore the key, will always be zero
+            // the val is the long list
+            // want the ad_id, referrer, and the click rate
+            // so pass key == impression id, the ad_id, the referrer, and whether click or impression
+
+            String referrer = "";
+            String adid = "";
+            String impressionid = "";
+            String clickOrImpression = "";
+            String returnVals = "";
+
+            String filename = ((FileSplit) context.getInputSplit()).getPath().getName();
+            String whole = val.toString();
+            int indexOfCurly = whole.indexOf("{");
+
+            System.out.println("Whole = " + whole);
+            String line = "";
+            if (indexOfCurly == -1) {
+                line = whole;
+            }
+            else {
+                line = whole.substring(indexOfCurly);
+            }
+
+            // System.out.println("here now");
+            Object entry;
+            try {
+
+                JSONParser parser = new JSONParser();
+                JSONObject json = (JSONObject)parser.parse(line);
+                referrer = referrer + (String) json.get("referrer");
+                adid = adid + (String) json.get("adId");
+                impressionid = impressionid + (String) json.get("impressionId");
 
             } catch (ParseException ex) {
                 ex.printStackTrace();
@@ -108,62 +258,79 @@ public class AdMap extends Configured implements Tool {
             
             // if there is no referrer, we know it's a click!
             if (referrer.equals("null")) {
-                returnvalues.insert(0,"click ");
-                // clickOrImpression = clickOrImpression + "click";
-                // returnVals = clickOrImpression + " " + adid;
+                clickOrImpression = clickOrImpression + "click";
+                returnVals = clickOrImpression + " " + adid;
             } else {
-                returnvalues.insert(0,"impression ");
-                returnvalues.append(" ");
-                returnvalues.append(referrer);
-                // clickOrImpression = clickOrImpression + "impression";
-                // returnVals = clickOrImpression + " " + adid + " " + referrer;
+                clickOrImpression = clickOrImpression + "impression";
+                returnVals = clickOrImpression + " " + adid + " " + referrer;
             }
 
-            context.write(new Text(impressionid.toString()), new Text(returnvalues.toString()));
+            context.write(new Text(impressionid), new Text(returnVals));
 
         }
-	}
+    }
 
-	public static class IdentityReducer extends Reducer<Text, Text, Text, Text> {
+    public static class SecondReducer extends Reducer<Text, Text, Text, Text> {
         @Override
         public void reduce(Text key, Iterable<Text> values, Context context) throws IOException, InterruptedException {
-            int impressions = 0;
-            int clicks = 0;
+            double impressions = 0;
+            double clicks = 0;
             boolean adflag = false;
             boolean referrerflag = false;
-            StringBuilder adid = new StringBuilder();
-            StringBuilder referrer = new StringBuilder();
-            // String adid = "";
-            // String referrer = "";
+            String adid = "";
+            String referrer = "";
+
+            System.out.println("Here");
+            System.out.println("Key = " + key);
 
             for (Text value : values) {
-                String line = value.toString();
-                String[] data = line.split(" ");
-
-                if (!adflag) { adid.append(data[1]); adflag = true; }
-                if (data[0].equals("click")) {
-                    clicks++;
-                } else {
-                    impressions++;
-                    if (!referrerflag) {
-                        referrer.append(data[2]);
-                        referrerflag = true;
-                    }
-                }
-
+                adid = value.toString();
             }
 
-            StringBuilder keyString = new StringBuilder("[");
-            keyString.append(referrer);
-            keyString.append(", ");
-            keyString.append(adid);
-            keyString.append("]");
+            // for (Text value : values) {
+            //     System.out.println("Value = " + value);
+            //     String line = value.toString();
+            //     String[] data = line.split(" ");
+
+            //     if (data.length > 2) {
+            //         if (!adflag) { adid = adid + data[1]; adflag = true; }
+
+            //         if (data[0].equals("click")) {
+            //             clicks++;
+            //         } else {
+            //             impressions++;
+            //             if (!referrerflag) {
+            //                 referrer = referrer + data[2];
+            //                 referrerflag = true;
+            //             }
+            //         }
+            //     } else { System.out.println("Data too short"); }
+
+            // }
 
             // String keyString = "[" + referrer + ", " + adid + "]";
-            double rate = (double)clicks / (double)(clicks + impressions);
+            // double rate = 0.0;
+            // if (clicks + impressions > 0) {
+            //     rate = clicks / (clicks + impressions);
+            // }
+            // else { System.out.println("ERROR tried to divideby zero");}
+            // System.out.println("Clicks: " + clicks);
+            // System.out.println("Impressiosns: " + impressions);
 
-            context.write(new Text(keyString.toString()), new Text(Double.toString(rate)));
+            // context.write(new Text(keyString), new Text(Double.toString(rate)));
+            context.write(key, new Text(adid));
+            System.out.println("\n\n");
         }
-	}
+    }
+
+
+
+
+
+
+
+
+
+
 
 }
