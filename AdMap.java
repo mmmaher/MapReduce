@@ -41,7 +41,7 @@ public class AdMap extends Configured implements Tool {
 
     @Override
     public int run(String[] args) throws Exception {
-        if (args.length < 2) {
+        if (args.length < 3) {
                 System.err.println("Wrong num of parameters");
                 System.err.println("Expected: [in] [out]");
                 System.exit(1);
@@ -58,7 +58,8 @@ public class AdMap extends Configured implements Tool {
         job.setMapOutputKeyClass(Text.class);
 
         FileInputFormat.addInputPath(job, new Path(args[0]));
-        FileOutputFormat.setOutputPath(job, new Path(args[1]));
+        FileInputFormat.addInputPath(job, new Path(args[1]));
+        FileOutputFormat.setOutputPath(job, new Path(args[2]));
 
         return job.waitForCompletion(true) ? 0 : 1;
     }
@@ -124,7 +125,6 @@ public class AdMap extends Configured implements Tool {
             boolean referrerflag = false;
             String adid = "";
             String referrer = "";
-
 
             for (Text value : values) {
                 String line = value.toString();
