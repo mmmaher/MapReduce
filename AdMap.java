@@ -1,6 +1,8 @@
 import java.io.IOException;
 import java.util.*;
 
+import org.json.simple.*;
+
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.io.LongWritable;
@@ -18,6 +20,15 @@ import org.apache.hadoop.conf.*;
 import org.apache.hadoop.io.*;
 import org.apache.hadoop.mapreduce.lib.input.FileSplit;
 import org.apache.hadoop.util.*;
+
+import org.json.simple.*;
+import org.json.simple.parser.JSONParser;
+import org.json.simple.parser.ParseException;
+import org.json.simple.JSONObject;
+import org.json.simple.JSONArray;
+
+
+
 
 // AdMap job that pipes input to output as MapReduce-created key-value pairs
 
@@ -46,9 +57,6 @@ public class AdMap extends Configured implements Tool {
 
         job.setMapOutputKeyClass(Text.class);
 
-        // job.setInputFormatClass(TextInputFormat.class);
-        // job.setOutputFormatClass(TextOutputFormat.class);
-
         FileInputFormat.addInputPath(job, new Path(args[0]));
         FileOutputFormat.setOutputPath(job, new Path(args[1]));
 
@@ -75,31 +83,33 @@ public class AdMap extends Configured implements Tool {
             String valsToReturn;
 
             String filename = ((FileSplit) context.getInputSplit()).getPath().getName();
-            String line = val.toString();
-            StringTokenizer tokenizer = new StringTokenizer(line, ":,");
-            if (line.contains("referrer")) {
-                isImpression = true;
+            String whole = val.toString();
+            int indexOfCurly = whole.indexOf("{");
+            String line = whole.substring(indexOfCurly);
+
+            String returner = "return this ";
+            Object entry;
+            try {
+
+                JSONParser parser = new JSONParser();
+                JSONObject json = (JSONObject)parser.parse(line);
+                referrer = referrer + (String) json.get("referrer");
+                adid = adid + (String) json.get("adId");
+                impressionid = impressionid + (String) json.get("impressionId");
+                
+            } catch (ParseException ex) {
+                ex.printStackTrace();
             }
 
-            while (tokenizer.hasMoreTokens()) {
-                    if (tokenizer.nextToken().contains("referrer")) {
-                        referrer += tokenizer.nextToken();
-                    }
-                    else if (tokenizer.nextToken().contains("impressionId")) {
-                        impresionid += tokenizer.nextToken();
-                    }
-                    else if (tokenizer.nextToken().contains("adId")) {
-                        adid += tokenizer.nextToken();
-                    }
-            }
+            String returnVals = referrer + " " + adid + " " + impressionid;
 
-            if (isImpression) {
-                valsToReturn = "impression " + adid + " " + referrer
-            } else {
-                valsToReturn = "click " + adid;
-            }
+            // if (isImpression) {
+            //     valsToReturn = "impression " + adid + " " + referrer
+            // } else {
+            //     valsToReturn = "click " + adid;
+            // }
 
-            context.write(new Text(impresionid), new Text(valsToReturn));
+            context.write(new Text("hella"), new Text(returnVals));
 
         }
 	}
