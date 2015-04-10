@@ -8,4 +8,4 @@ all: build
 
 build: ${SRC}
 	${JAVA_HOME}/bin/javac -Xlint -classpath ${NEW_CLASSPATH} ${SRC}
-    ${JAVA_HOME}/bin/jar cvf build.jar *.class lib
+	${JAVA_HOME}/bin/jar cvf build.jar *.class lib
