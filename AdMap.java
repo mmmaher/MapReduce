@@ -93,7 +93,7 @@ public class AdMap extends Configured implements Tool {
 
                 JSONParser parser = new JSONParser();
                 JSONObject json = (JSONObject)parser.parse(line);
-                referrer = referrer + (String) json.get("referrerpork");
+                referrer = referrer + (String) json.get("referrer");
                 adid = adid + (String) json.get("adId");
                 impressionid = impressionid + (String) json.get("impressionId");
 
@@ -118,14 +118,35 @@ public class AdMap extends Configured implements Tool {
 	public static class IdentityReducer extends Reducer<Text, Text, Text, Text> {
         @Override
         public void reduce(Text key, Iterable<Text> values, Context context) throws IOException, InterruptedException {
-            // write (key, val) for every value
-            // String docList = "";
+            int impressions = 0;
+            int clicks = 0;
+            boolean adflag = false;
+            boolean referrerflag = false;
+            String adid = "";
+            String referrer = "";
+
+
             for (Text value : values) {
-                context.write(key, value);
+                String line = value.toString();
+                String[] data = line.split(" ");
+
+                if (!adflag) { adid = adid + data[1]; adflag = true; }
+                if (data[0].equals("click")) {
+                    clicks++;
+                } else {
+                    impressions++;
+                    if (!referrerflag) {
+                        referrer = referrer + data[2];
+                        referrerflag = true;
+                    }
+                }
+
             }
 
-            // context.write(key, new Text(docList));
+            String keyString = "[" + referrer + ", " + adid + "]";
+            int rate = clicks / (clicks + impressions);
 
+            context.write(new Text(keyString), new Text(Integer.toString(rate)));
         }
 	}
 
