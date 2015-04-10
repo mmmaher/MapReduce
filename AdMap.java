@@ -104,13 +104,13 @@ public class AdMap extends Configured implements Tool {
             // if there is no referrer, we know it's a click!
             if (referrer.equals("null")) {
                 clickOrImpression = clickOrImpression + "click";
-                returnVals = clickOrImpression + " " + adid + " " + impressionid;
+                returnVals = clickOrImpression + " " + adid;
             } else {
                 clickOrImpression = clickOrImpression + "impression";
-                returnVals = clickOrImpression + " " + adid + " " + impressionid + " " + referrer;
+                returnVals = clickOrImpression + " " + adid + " " + referrer;
             }
 
-            context.write(new Text("hella"), new Text(returnVals));
+            context.write(new Text(impressionid), new Text(returnVals));
 
         }
 	}
