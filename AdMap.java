@@ -88,9 +88,7 @@ public class AdMap extends Configured implements Tool {
             String referrer = "";
             String adid = "";
             String impressionid = "";
-            String clickOrImpression = "";
             String returnVals = "";
-            Boolean dontReturn = false;
 
             String filename = ((FileSplit) context.getInputSplit()).getPath().getName();
             String whole = val.toString();
@@ -105,18 +103,13 @@ public class AdMap extends Configured implements Tool {
             else {
                 line = whole.substring(indexOfCurly);
             }
-            if (whole.equals("")) {
-                dontReturn = true;
-            }
-
+            
             try {
-
                 JSONParser parser = new JSONParser();
                 JSONObject json = (JSONObject)parser.parse(line);
                 referrer = referrer + (String) json.get("referrer");
                 adid = adid + (String) json.get("adId");
                 impressionid = impressionid + (String) json.get("impressionId");
-
             } catch (ParseException ex) {
                 ex.printStackTrace();
             }
@@ -128,93 +121,46 @@ public class AdMap extends Configured implements Tool {
                 returnVals = "1";
             } else {
                 // returnVals = referrer + " " + adid;
-
                 JSONObject obj = new JSONObject();
                 obj.put("adId", adid);
                 obj.put("referrer", referrer);
                 returnVals = (String) (obj.toJSONString());
             }
-
-            if ((impressionid.equals("")) || !(impressionid.equals("null"))) {
-                dontReturn = true;
-            }
-
-            System.out.println("Returnvals = " + returnVals);
+            // System.out.println("Returnvals = " + returnVals);
 
             context.write(new Text(impressionid), new Text(returnVals));
-
         }
     }
 
     public static class FirstReducer extends Reducer<Text, Text, Text, Text> {
         @Override
         public void reduce(Text key, Iterable<Text> values, Context context) throws IOException, InterruptedException {
+            // input:
             // key = impressionid
-            // value
+            // value = json of referrer and adid
+            // output:
+            // key = json of referrer and adid
+            // num clicks
 
-            double impressions = 0;
-            double clicks = 0;
-            boolean adflag = false;
-            boolean referrerflag = false;
-            String adid = "";
-            String referrer = "";
+            int clicks = 0;
+            boolean flag = false;
+            String outKey = "";
+            String outVal = "";
 
-            System.out.println("Here");
-            System.out.println("Key = " + key);
-
-            String answer = "";
-            // StringBuilder docList = new StringBuilder();
             for (Text value : values) {
-                System.out.println("Value = " + value);
-                // docList.append(value + " ");
-                answer = answer + " " + value;
+                String valueString = value.toString();
+                // System.out.println("Value = " + valueString);
+                if (valueString.contains("referrer")) {
+                    System.out.println("contains referrer!");
+                    outKey = valueString;
+                }
+
+                if (valueString.equals("1")) {
+                    clicks++;
+                }
             }
-
-            // try {
-
-            //     JSONParser parser = new JSONParser();
-            //     JSONObject json = (JSONObject)parser.parse(line);
-            //     referrer = referrer + (String) json.get("referrer");
-            //     adid = adid + (String) json.get("adId");
-            //     impressionid = impressionid + (String) json.get("impressionId");
-
-            // } catch (ParseException ex) {
-            //     ex.printStackTrace();
-            // }
-
-            // for (Text value : values) {
-            //     System.out.println("Value = " + value);
-            //     String line = value.toString();
-            //     String[] data = line.split(" ");
-
-            //     if (data.length > 2) {
-            //         if (!adflag) { adid = adid + data[1]; adflag = true; }
-
-            //         if (data[0].equals("click")) {
-            //             clicks++;
-            //         } else {
-            //             impressions++;
-            //             if (!referrerflag) {
-            //                 referrer = referrer + data[2];
-            //                 referrerflag = true;
-            //             }
-            //         }
-            //     } else { System.out.println("Data too short"); }
-
-            // }
-
-            // String keyString = "[" + referrer + ", " + adid + "]";
-            // double rate = 0.0;
-            // if (clicks + impressions > 0) {
-            //     rate = clicks / (clicks + impressions);
-            // }
-            // else { System.out.println("ERROR tried to divideby zero");}
-            // System.out.println("Clicks: " + clicks);
-            // System.out.println("Impressiosns: " + impressions);
-
-            // context.write(new Text(keyString), new Text(Double.toString(rate)));
-            context.write(key, new Text(answer));
-            System.out.println("\n\n");
+            outVal = Integer.toString(clicks);
+            context.write(new Text(outKey), new Text(outVal));
         }
     }
 
