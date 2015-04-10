@@ -79,8 +79,8 @@ public class AdMap extends Configured implements Tool {
             String referrer = "";
             String adid = "";
             String impressionid = "";
-            boolean isImpression = false;
-            String valsToReturn;
+            String clickOrImpression = "";
+            String returnVals = "";
 
             String filename = ((FileSplit) context.getInputSplit()).getPath().getName();
             String whole = val.toString();
@@ -93,21 +93,22 @@ public class AdMap extends Configured implements Tool {
 
                 JSONParser parser = new JSONParser();
                 JSONObject json = (JSONObject)parser.parse(line);
-                referrer = referrer + (String) json.get("referrer");
+                referrer = referrer + (String) json.get("referrerpork");
                 adid = adid + (String) json.get("adId");
                 impressionid = impressionid + (String) json.get("impressionId");
-                
+
             } catch (ParseException ex) {
                 ex.printStackTrace();
             }
-
-            String returnVals = referrer + " " + adid + " " + impressionid;
-
-            // if (isImpression) {
-            //     valsToReturn = "impression " + adid + " " + referrer
-            // } else {
-            //     valsToReturn = "click " + adid;
-            // }
+            
+            // if there is no referrer, we know it's a click!
+            if (referrer.equals("null")) {
+                clickOrImpression = clickOrImpression + "click";
+                returnVals = clickOrImpression + " " + adid + " " + impressionid;
+            } else {
+                clickOrImpression = clickOrImpression + "impression";
+                returnVals = clickOrImpression + " " + adid + " " + impressionid + " " + referrer;
+            }
 
             context.write(new Text("hella"), new Text(returnVals));
 
