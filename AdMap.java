@@ -76,26 +76,30 @@ public class AdMap extends Configured implements Tool {
             // want the ad_id, referrer, and the click rate
             // so pass key == impression id, the ad_id, the referrer, and whether click or impression
 
-            String referrer = "";
-            String adid = "";
-            String impressionid = "";
-            String clickOrImpression = "";
-            String returnVals = "";
+            StringBuilder returnvalues = new StringBuilder();
+            StringBuilder impressionid = new StringBuilder();
+            StringBuilder referrer = new StringBuilder();
+
+            // String referrer = "";
+            // String adid = "";
+            // String impressionid = "";
+            // String clickOrImpression = "";
+            // String returnVals = "";
 
             String filename = ((FileSplit) context.getInputSplit()).getPath().getName();
             String whole = val.toString();
             int indexOfCurly = whole.indexOf("{");
             String line = whole.substring(indexOfCurly);
 
-            String returner = "return this ";
-            Object entry;
+            // String returner = "return this ";
+            // Object entry;
             try {
 
                 JSONParser parser = new JSONParser();
                 JSONObject json = (JSONObject)parser.parse(line);
-                referrer = referrer + (String) json.get("referrer");
-                adid = adid + (String) json.get("adId");
-                impressionid = impressionid + (String) json.get("impressionId");
+                referrer.append((String) json.get("referrer"));
+                returnvalues.append((String) json.get("adId"));
+                impressionid.append((String) json.get("impressionId"));
 
             } catch (ParseException ex) {
                 ex.printStackTrace();
@@ -103,14 +107,17 @@ public class AdMap extends Configured implements Tool {
             
             // if there is no referrer, we know it's a click!
             if (referrer.equals("null")) {
-                clickOrImpression = clickOrImpression + "click";
-                returnVals = clickOrImpression + " " + adid;
+                returnvalues.insert(0,"click");
+                // clickOrImpression = clickOrImpression + "click";
+                // returnVals = clickOrImpression + " " + adid;
             } else {
-                clickOrImpression = clickOrImpression + "impression";
-                returnVals = clickOrImpression + " " + adid + " " + referrer;
+                returnvalues.insert(0,"impression");
+                returnvalues.append(referrer);
+                // clickOrImpression = clickOrImpression + "impression";
+                // returnVals = clickOrImpression + " " + adid + " " + referrer;
             }
 
-            context.write(new Text(impressionid), new Text(returnVals));
+            context.write(new Text(impressionid.toString()), new Text(returnvalues.toString()));
 
         }
 	}
@@ -122,31 +129,39 @@ public class AdMap extends Configured implements Tool {
             int clicks = 0;
             boolean adflag = false;
             boolean referrerflag = false;
-            String adid = "";
-            String referrer = "";
+            StringBuilder adid = new StringBuilder();
+            StringBuilder referrer = new StringBuilder();
+            // String adid = "";
+            // String referrer = "";
 
 
             for (Text value : values) {
                 String line = value.toString();
                 String[] data = line.split(" ");
 
-                if (!adflag) { adid = adid + data[1]; adflag = true; }
+                if (!adflag) { adid.append(data[1]); adflag = true; }
                 if (data[0].equals("click")) {
                     clicks++;
                 } else {
                     impressions++;
                     if (!referrerflag) {
-                        referrer = referrer + data[2];
+                        referrer.append(data[2]);
                         referrerflag = true;
                     }
                 }
 
             }
 
-            String keyString = "[" + referrer + ", " + adid + "]";
-            int rate = clicks / (clicks + impressions);
+            StringBuilder keyString = new StringBuilder("[");
+            keyString.append(referrer);
+            keyString.append(", ");
+            keyString.append(adid);
+            keyString.append("]");
 
-            context.write(new Text(keyString), new Text(Integer.toString(rate)));
+            // String keyString = "[" + referrer + ", " + adid + "]";
+            double rate = (double)clicks / (double)(clicks + impressions);
+
+            context.write(new Text(keyString.toString()), new Text(Double.toString(rate)));
         }
 	}
 
