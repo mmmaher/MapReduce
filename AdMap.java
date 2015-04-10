@@ -127,6 +127,8 @@ public class AdMap extends Configured implements Tool {
             if (referrer.equals("null")) {
                 returnVals = "1";
             } else {
+                // returnVals = referrer + " " + adid;
+
                 JSONObject obj = new JSONObject();
                 obj.put("adId", adid);
                 obj.put("referrer", referrer);
@@ -137,10 +139,9 @@ public class AdMap extends Configured implements Tool {
                 dontReturn = true;
             }
 
-            if (!dontReturn) {
-                context.write(new Text(impressionid), new Text(returnVals));
-            }
+            System.out.println("Returnvals = " + returnVals);
 
+            context.write(new Text(impressionid), new Text(returnVals));
 
         }
     }
@@ -148,6 +149,9 @@ public class AdMap extends Configured implements Tool {
     public static class FirstReducer extends Reducer<Text, Text, Text, Text> {
         @Override
         public void reduce(Text key, Iterable<Text> values, Context context) throws IOException, InterruptedException {
+            // key = impressionid
+            // value
+
             double impressions = 0;
             double clicks = 0;
             boolean adflag = false;
@@ -158,17 +162,25 @@ public class AdMap extends Configured implements Tool {
             System.out.println("Here");
             System.out.println("Key = " + key);
 
-            
-
+            String answer = "";
+            // StringBuilder docList = new StringBuilder();
             for (Text value : values) {
                 System.out.println("Value = " + value);
-                adid = value.toString();
+                // docList.append(value + " ");
+                answer = answer + " " + value;
             }
 
-            StringBuilder docList = new StringBuilder();
-            for (Text value : values) {
-                docList.append(value + " ");
-            }
+            // try {
+
+            //     JSONParser parser = new JSONParser();
+            //     JSONObject json = (JSONObject)parser.parse(line);
+            //     referrer = referrer + (String) json.get("referrer");
+            //     adid = adid + (String) json.get("adId");
+            //     impressionid = impressionid + (String) json.get("impressionId");
+
+            // } catch (ParseException ex) {
+            //     ex.printStackTrace();
+            // }
 
             // for (Text value : values) {
             //     System.out.println("Value = " + value);
@@ -201,7 +213,7 @@ public class AdMap extends Configured implements Tool {
             // System.out.println("Impressiosns: " + impressions);
 
             // context.write(new Text(keyString), new Text(Double.toString(rate)));
-            context.write(key, new Text(docList.toString()));
+            context.write(key, new Text(answer));
             System.out.println("\n\n");
         }
     }
