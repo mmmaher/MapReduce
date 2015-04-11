@@ -1,5 +1,6 @@
 import java.io.IOException;
 import java.util.*;
+import java.util.Random;
 
 import java.lang.StringBuilder;
 
@@ -43,7 +44,7 @@ public class AdMap extends Configured implements Tool {
 
     @Override
     public int run(String[] args) throws Exception {
-        if (args.length < 4) {
+        if (args.length < 3) {
                 System.err.println("Wrong num of parameters");
                 System.err.println("Expected: [in] [out]");
                 System.exit(1);
@@ -63,16 +64,18 @@ public class AdMap extends Configured implements Tool {
         job_2.setReducerClass(AdMap.SecondReducer.class);
         job_2.setMapOutputKeyClass(Text.class);
 
-        // String firstOutputPath = "/user/root/first_output"
+        Random random = new Random();
+        int ranInt = random.nextInt(100);
+        String ranDirName = "/user/input/randir" + Integer.toString(ranInt);
 
-        // FileInputFormat.addInputPath(job, new Path(args[0]));
-        // FileInputFormat.addInputPath(job, new Path(args[1]));
-        // FileOutputFormat.setOutputPath(job, new Path(args[2]));
+        Path firstOutputPath = new Path(ranDirName);
+
         FileInputFormat.addInputPath(job, new Path(args[0]));
         FileInputFormat.addInputPath(job, new Path(args[1]));
-        FileOutputFormat.setOutputPath(job, new Path(args[2]));
-        FileInputFormat.addInputPath(job_2, new Path(args[2]));
-        FileOutputFormat.setOutputPath(job_2, new Path(args[3]));
+        FileOutputFormat.setOutputPath(job, firstOutputPath);
+
+        FileInputFormat.addInputPath(job_2, firstOutputPath);
+        FileOutputFormat.setOutputPath(job_2, new Path(args[2]));
 
         return (job.waitForCompletion(true) && job_2.waitForCompletion(true)) ? 0 : 1;
     }
