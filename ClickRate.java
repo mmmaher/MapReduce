@@ -1,3 +1,13 @@
+/*
+ * ClickRate.java
+ * Megan Maher and Nikki Morin
+ * Bowdoin College, Class of 2016
+ * Distributed Systems: MapReduce
+ *
+ * Created: March 30, 2015
+ * Last Modified: April 11, 2015
+ */
+
 import java.io.IOException;
 import java.util.*;
 import java.util.Random;
@@ -30,12 +40,10 @@ import org.json.simple.parser.ParseException;
 import org.json.simple.JSONObject;
 import org.json.simple.JSONArray;
 
-
-
-
-// AdMap job that pipes input to output as MapReduce-created key-value pairs
-
-public class AdMap extends Configured implements Tool {
+/*
+ * ClickRate job that pipes input to output as MapReduce-created key-value pairs
+ */
+public class ClickRate extends Configured implements Tool {
 
     public static void main(String[] args) throws Exception {
         int res = ToolRunner.run(new Configuration(), new AdMap(), args);
@@ -80,19 +88,18 @@ public class AdMap extends Configured implements Tool {
         return (job.waitForCompletion(true) && job_2.waitForCompletion(true)) ? 0 : 1;
     }
 
+    /*
+     * Input: One object of a click or impression file
+     * Function: Parses JSON object to extract impression ID, ad ID, referrer name
+     * Output: Key = impression ID
+     *         Value = 1 or 0 (click or impression), (ad ID, referrer name) -> depending on 1 or 0 value
+     */
     public static class FirstMapper extends Mapper<LongWritable, Text, Text, Text> {
         private final static IntWritable one = new IntWritable(1);
         private Text word = new Text();
 
         @Override
         public void map(LongWritable key, Text val, Context context) throws IOException, InterruptedException {
-            // Isolate the impression_id, pass that as the key; the value should be
-            // a click or an impression
-            // ignore the key, will always be zero
-            // the val is the long list
-            // want the ad_id, referrer, and the click rate
-            // so pass key == impression id, the ad_id, the referrer, and whether click or impression
-
             String referrer = "";
             String adid = "";
             String impressionid = "";
@@ -101,7 +108,7 @@ public class AdMap extends Configured implements Tool {
             String filename = ((FileSplit) context.getInputSplit()).getPath().getName();
             String whole = val.toString();
 
-            // Get only the json part of the string
+            // Get only the JSON part of the string
             int indexOfCurly = whole.indexOf("{");
             System.out.println("Whole = " + whole);
             String line = "";
@@ -115,42 +122,38 @@ public class AdMap extends Configured implements Tool {
             try {
                 JSONParser parser = new JSONParser();
                 JSONObject json = (JSONObject)parser.parse(line);
-                referrer = referrer + (String) json.get("referrer");
-                adid = adid + (String) json.get("adId");
-                impressionid = impressionid + (String) json.get("impressionId");
+                referrer = (String) json.get("referrer");
+                adid = (String) json.get("adId");
+                impressionid = (String) json.get("impressionId");
             } catch (ParseException ex) {
                 ex.printStackTrace();
             }
             
             // If there is no referrer, we know it's a click!
             // If click: return 1
-            // If impression: return json string of referrer and adId
+            // If impression: return JSON string of referrer and ad ID
             if (referrer.equals("null")) {
                 returnVals = "1";
             } else {
-                // returnVals = referrer + " " + adid;
                 HashMap<String,String> hash = new HashMap<String,String>();
                 hash.put("adId", adid);
                 hash.put("referrer", referrer);
                 JSONObject obj = new JSONObject(hash);
                 returnVals = (obj.toJSONString());
             }
-            // System.out.println("Returnvals = " + returnVals);
-
             context.write(new Text(impressionid), new Text(returnVals));
         }
     }
 
+    /*
+     * Input: Key = impression ID
+     *        Value = JSON of referrer and ad ID
+     * Output: Key = JSON of referrer and ad ID
+     *         Value = 0 or 1 (no click or click)
+     */
     public static class FirstReducer extends Reducer<Text, Text, Text, Text> {
         @Override
         public void reduce(Text key, Iterable<Text> values, Context context) throws IOException, InterruptedException {
-            // input:
-            // key = impressionid
-            // value = json of referrer and adid
-            // output:
-            // key = json of referrer and adid
-            // num clicks
-
             int clicks = 0;
             boolean flag = false;
             String outKey = "";
@@ -158,7 +161,6 @@ public class AdMap extends Configured implements Tool {
 
             for (Text value : values) {
                 String valueString = value.toString();
-                // System.out.println("Value = " + valueString);
                 if (valueString.contains("referrer")) {
                     System.out.println("contains referrer!");
                     outKey = valueString;
@@ -173,6 +175,12 @@ public class AdMap extends Configured implements Tool {
         }
     }
 
+    /*
+     * Input: Key = offset number
+     *        Value = JSON of referrer and ad ID, numclicks
+     * Output: Key = [referrer, adid]
+     *         Value = 0 or 1 (no click or click)
+     */
     public static class SecondMapper extends Mapper<LongWritable, Text, Text, Text> {
         private final static IntWritable one = new IntWritable(1);
         private Text word = new Text();
@@ -182,7 +190,6 @@ public class AdMap extends Configured implements Tool {
             
             String referrer = "";
             String adid = "";
-            String idreturn = "";
             String valueNo = "";
 
             String filename = ((FileSplit) context.getInputSplit()).getPath().getName();
@@ -200,23 +207,35 @@ public class AdMap extends Configured implements Tool {
                 line = whole.substring(indexOfFirstCurly, indexOfSecondCurly+1);
             }
 
-            valueNo = valueNo + whole.substring(whole.length() - 1);
+            valueNo = whole.substring(whole.length() - 1);
 
             try {
                 JSONParser parser = new JSONParser();
                 JSONObject json = (JSONObject)parser.parse(line);
-                referrer = referrer + (String) json.get("referrer");
-                adid = adid + (String) json.get("adId");
+                referrer = (String) json.get("referrer");
+                adid = (String) json.get("adId");
             } catch (ParseException ex) {
                 ex.printStackTrace();
             }
 
-            idreturn = idreturn + "[" + referrer + ", " + adid + "]";
-            context.write(new Text(idreturn), new Text(valueNo));
+            StringBuilder idreturn =  new StringBuilder();
+            idreturn.append("[");
+            idreturn.append(referrer);
+            idreturn.append(", ");
+            idreturn.append(adid);
+            idreturn.append("]");
 
+            context.write(new Text(idreturn.toString()), new Text(valueNo));
         }
     }
 
+
+    /*
+     * Input: Key = [referrer, adid]
+     *        Value = 0 or 1 (no click or click)
+     * Output: Key = [referrer, adid]
+     *         Value = ratio of clicks : one occurance of impression
+     */
     public static class SecondReducer extends Reducer<Text, Text, Text, Text> {
         @Override
         public void reduce(Text key, Iterable<Text> values, Context context) throws IOException, InterruptedException {
