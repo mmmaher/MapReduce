@@ -46,7 +46,7 @@ import org.json.simple.JSONArray;
 public class ClickRate extends Configured implements Tool {
 
     public static void main(String[] args) throws Exception {
-        int res = ToolRunner.run(new Configuration(), new AdMap(), args);
+        int res = ToolRunner.run(new Configuration(), new ClickRate(), args);
         System.exit(res);
     }
 
@@ -60,16 +60,16 @@ public class ClickRate extends Configured implements Tool {
 
         Configuration conf = getConf();
 
-        Job job = new Job(conf, "first admap job");
-        job.setJarByClass(AdMap.class);
-        job.setMapperClass(AdMap.FirstMapper.class);
-        job.setReducerClass(AdMap.FirstReducer.class);
+        Job job = new Job(conf, "first ClickRate job");
+        job.setJarByClass(ClickRate.class);
+        job.setMapperClass(ClickRate.FirstMapper.class);
+        job.setReducerClass(ClickRate.FirstReducer.class);
         job.setMapOutputKeyClass(Text.class);
 
-        Job job_2 = new Job(conf, "second admap job");
-        job_2.setJarByClass(AdMap.class);
-        job_2.setMapperClass(AdMap.SecondMapper.class);
-        job_2.setReducerClass(AdMap.SecondReducer.class);
+        Job job_2 = new Job(conf, "second ClickRate job");
+        job_2.setJarByClass(ClickRate.class);
+        job_2.setMapperClass(ClickRate.SecondMapper.class);
+        job_2.setReducerClass(ClickRate.SecondReducer.class);
         job_2.setMapOutputKeyClass(Text.class);
 
         Random random = new Random();
