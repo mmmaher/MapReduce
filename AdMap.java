@@ -1,5 +1,6 @@
 import java.io.IOException;
 import java.util.*;
+import java.util.Random;
 
 import java.lang.StringBuilder;
 
@@ -63,7 +64,11 @@ public class AdMap extends Configured implements Tool {
         job_2.setReducerClass(AdMap.SecondReducer.class);
         job_2.setMapOutputKeyClass(Text.class);
 
-        Path firstOutputPath = new Path("/user/input/somedir2");
+        Random random = new Random();
+        int ranInt = random.nextInt(100);
+        String ranDirName = "/user/input/randir" + Integer.toString(ranInt);
+
+        Path firstOutputPath = new Path(ranDirName);
 
         FileInputFormat.addInputPath(job, new Path(args[0]));
         FileInputFormat.addInputPath(job, new Path(args[1]));
