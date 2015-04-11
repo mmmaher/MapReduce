@@ -43,7 +43,7 @@ public class AdMap extends Configured implements Tool {
 
     @Override
     public int run(String[] args) throws Exception {
-        if (args.length < 3) {
+        if (args.length < 2) {
                 System.err.println("Wrong num of parameters");
                 System.err.println("Expected: [in] [out]");
                 System.exit(1);
@@ -57,19 +57,23 @@ public class AdMap extends Configured implements Tool {
         job.setReducerClass(AdMap.FirstReducer.class);
         job.setMapOutputKeyClass(Text.class);
 
-        // Job job_2 = new Job(conf, "second admap job");
-        // job.setJarByClass(AdMap.class);
-        // job.setMapperClass(AdMap.SecondMapper.class);
-        // job.setReducerClass(AdMap.SecondReducer.class);
-        // job.setMapOutputKeyClass(Text.class);
+        Job job_2 = new Job(conf, "second admap job");
+        job_2.setJarByClass(AdMap.class);
+        job_2.setMapperClass(AdMap.SecondMapper.class);
+        job_2.setReducerClass(AdMap.SecondReducer.class);
+        job_2.setMapOutputKeyClass(Text.class);
 
         // String firstOutputPath = "/user/root/first_output"
 
+        // FileInputFormat.addInputPath(job, new Path(args[0]));
+        // FileInputFormat.addInputPath(job, new Path(args[1]));
+        // FileOutputFormat.setOutputPath(job, new Path(args[2]));
         FileInputFormat.addInputPath(job, new Path(args[0]));
-        FileInputFormat.addInputPath(job, new Path(args[1]));
-        FileOutputFormat.setOutputPath(job, new Path(args[2]));
+        FileOutputFormat.setOutputPath(job, new Path(args[1]));
+        FileInputFormat.addInputPath(job_2, new Path(args[1]));
+        FileOutputFormat.setOutputPath(job_2, new Path(args[1]));
 
-        return job.waitForCompletion(true) ? 0 : 1;
+        return (job.waitForCompletion(true) && job_2.waitForCompletion(true)) ? 0 : 1;
     }
 
     public static class FirstMapper extends Mapper<LongWritable, Text, Text, Text> {
@@ -121,10 +125,11 @@ public class AdMap extends Configured implements Tool {
                 returnVals = "1";
             } else {
                 // returnVals = referrer + " " + adid;
-                JSONObject obj = new JSONObject();
-                obj.put("adId", adid);
-                obj.put("referrer", referrer);
-                returnVals = (String) (obj.toJSONString());
+                HashMap<String,String> hash = new HashMap<String,String>();
+                hash.put("adId", adid);
+                hash.put("referrer", referrer);
+                JSONObject obj = new JSONObject(hash);
+                returnVals = (obj.toJSONString());
             }
             // System.out.println("Returnvals = " + returnVals);
 
@@ -174,6 +179,10 @@ public class AdMap extends Configured implements Tool {
 
         @Override
         public void map(LongWritable key, Text val, Context context) throws IOException, InterruptedException {
+            
+
+
+
             // Isolate the impression_id, pass that as the key; the value should be
             // a click or an impression
             // ignore the key, will always be zero
@@ -181,49 +190,49 @@ public class AdMap extends Configured implements Tool {
             // want the ad_id, referrer, and the click rate
             // so pass key == impression id, the ad_id, the referrer, and whether click or impression
 
-            String referrer = "";
-            String adid = "";
-            String impressionid = "";
-            String clickOrImpression = "";
-            String returnVals = "";
+            // String referrer = "";
+            // String adid = "";
+            // String impressionid = "";
+            // String clickOrImpression = "";
+            // String returnVals = "";
 
-            String filename = ((FileSplit) context.getInputSplit()).getPath().getName();
-            String whole = val.toString();
-            int indexOfCurly = whole.indexOf("{");
+            // String filename = ((FileSplit) context.getInputSplit()).getPath().getName();
+            // String whole = val.toString();
+            // int indexOfCurly = whole.indexOf("{");
 
-            System.out.println("Whole = " + whole);
-            String line = "";
-            if (indexOfCurly == -1) {
-                line = whole;
-            }
-            else {
-                line = whole.substring(indexOfCurly);
-            }
+            // System.out.println("Whole = " + whole);
+            // String line = "";
+            // if (indexOfCurly == -1) {
+            //     line = whole;
+            // }
+            // else {
+            //     line = whole.substring(indexOfCurly);
+            // }
 
-            // System.out.println("here now");
-            Object entry;
-            try {
+            // // System.out.println("here now");
+            // Object entry;
+            // try {
 
-                JSONParser parser = new JSONParser();
-                JSONObject json = (JSONObject)parser.parse(line);
-                referrer = referrer + (String) json.get("referrer");
-                adid = adid + (String) json.get("adId");
-                impressionid = impressionid + (String) json.get("impressionId");
+            //     JSONParser parser = new JSONParser();
+            //     JSONObject json = (JSONObject)parser.parse(line);
+            //     referrer = referrer + (String) json.get("referrer");
+            //     adid = adid + (String) json.get("adId");
+            //     impressionid = impressionid + (String) json.get("impressionId");
 
-            } catch (ParseException ex) {
-                ex.printStackTrace();
-            }
+            // } catch (ParseException ex) {
+            //     ex.printStackTrace();
+            // }
             
-            // if there is no referrer, we know it's a click!
-            if (referrer.equals("null")) {
-                clickOrImpression = clickOrImpression + "click";
-                returnVals = clickOrImpression + " " + adid;
-            } else {
-                clickOrImpression = clickOrImpression + "impression";
-                returnVals = clickOrImpression + " " + adid + " " + referrer;
-            }
+            // // if there is no referrer, we know it's a click!
+            // if (referrer.equals("null")) {
+            //     clickOrImpression = clickOrImpression + "click";
+            //     returnVals = clickOrImpression + " " + adid;
+            // } else {
+            //     clickOrImpression = clickOrImpression + "impression";
+            //     returnVals = clickOrImpression + " " + adid + " " + referrer;
+            // }
 
-            context.write(new Text(impressionid), new Text(returnVals));
+            context.write(new Text(key.toString() + "aaa"), val);
 
         }
     }
@@ -231,19 +240,46 @@ public class AdMap extends Configured implements Tool {
     public static class SecondReducer extends Reducer<Text, Text, Text, Text> {
         @Override
         public void reduce(Text key, Iterable<Text> values, Context context) throws IOException, InterruptedException {
-            double impressions = 0;
-            double clicks = 0;
-            boolean adflag = false;
-            boolean referrerflag = false;
-            String adid = "";
-            String referrer = "";
+            // int impressions = 0;
+            // int clicks = 0;
+            // double rate = 0.0;
 
-            System.out.println("Here");
-            System.out.println("Key = " + key);
+            // for (Text value : values) {
+            //     String currVal = value.toString();
+            //     if (Integer.parseInt(currVal) <= 0) {
+            //         impressions++;
+            //     } else {
+            //         clicks++;
+            //     }
+            // }
+
+            // if (clicks + impressions > 0) {
+            //     rate = (double)clicks / (double)(clicks + impressions);
+            // }
+
+            // context.write(key, new Text(Double.toString(rate) + " yo"));
+
 
             for (Text value : values) {
-                adid = value.toString();
+                context.write(key, value);
             }
+
+
+
+
+            // double impressions = 0;
+            // double clicks = 0;
+            // boolean adflag = false;
+            // boolean referrerflag = false;
+            // String adid = "";
+            // String referrer = "";
+
+            // System.out.println("Here");
+            // System.out.println("Key = " + key);
+
+            // for (Text value : values) {
+            //     adid = value.toString();
+            // }
 
             // for (Text value : values) {
             //     System.out.println("Value = " + value);
@@ -276,8 +312,8 @@ public class AdMap extends Configured implements Tool {
             // System.out.println("Impressiosns: " + impressions);
 
             // context.write(new Text(keyString), new Text(Double.toString(rate)));
-            context.write(key, new Text(adid));
-            System.out.println("\n\n");
+            // context.write(key, new Text(adid));
+            // System.out.println("\n\n");
         }
     }
 
