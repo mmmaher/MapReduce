@@ -60,13 +60,13 @@ public class ClickRate extends Configured implements Tool {
 
         Configuration conf = getConf();
 
-        Job job = new Job(conf, "first admap job");
+        Job job = new Job(conf, "first ClickRate job");
         job.setJarByClass(ClickRate.class);
         job.setMapperClass(ClickRate.FirstMapper.class);
         job.setReducerClass(ClickRate.FirstReducer.class);
         job.setMapOutputKeyClass(Text.class);
 
-        Job job_2 = new Job(conf, "second admap job");
+        Job job_2 = new Job(conf, "second ClickRate job");
         job_2.setJarByClass(ClickRate.class);
         job_2.setMapperClass(ClickRate.SecondMapper.class);
         job_2.setReducerClass(ClickRate.SecondReducer.class);
