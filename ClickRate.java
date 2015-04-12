@@ -132,14 +132,14 @@ public class ClickRate extends Configured implements Tool {
             // If there is no referrer, we know it's a click!
             // If click: return 1
             // If impression: return JSON string of referrer and ad ID
-            if (referrer.equals("null")) {
-                returnVals = "1";
-            } else {
+            if (line.contains("referrer")) {
                 HashMap<String,String> hash = new HashMap<String,String>();
                 hash.put("adId", adid);
                 hash.put("referrer", referrer);
                 JSONObject obj = new JSONObject(hash);
                 returnVals = (obj.toJSONString());
+            } else {
+                returnVals = "1";
             }
             context.write(new Text(impressionid), new Text(returnVals));
         }
