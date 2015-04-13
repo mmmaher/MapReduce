@@ -157,7 +157,7 @@ public class ClickRate extends Configured implements Tool {
             int clicks = 0;
             boolean flag = false;
             String outKey = "";
-            String outVal = "";
+            StringBuilder outVal = new StringBuilder("~^");
 
             for (Text value : values) {
                 String valueString = value.toString();
@@ -170,8 +170,8 @@ public class ClickRate extends Configured implements Tool {
                     clicks++;
                 }
             }
-            outVal = Integer.toString(clicks);
-            context.write(new Text(outKey), new Text(outVal));
+            outVal.insert(1, Integer.toString(clicks));
+            context.write(new Text(outKey), new Text(outVal.toString()));
         }
     }
 
@@ -198,7 +198,6 @@ public class ClickRate extends Configured implements Tool {
             // Get only the json part of the string
             int indexOfFirstCurly = whole.indexOf("{");
             int indexOfSecondCurly = whole.indexOf("}");
-            // System.out.println("Whole = " + whole);
             String line = "";
             if (indexOfFirstCurly == -1 || indexOfSecondCurly == -1) {
                 line = whole;
@@ -207,7 +206,9 @@ public class ClickRate extends Configured implements Tool {
                 line = whole.substring(indexOfFirstCurly, indexOfSecondCurly+1);
             }
 
-            valueNo = whole.substring(whole.length() - 1);
+            int indexOfSquiggle = whole.indexOf("~");
+            int indexOfUpArrow = whole.indexOf("^");
+            valueNo = whole.substring(indexOfSquiggle+1, indexOfUpArrow);
 
             try {
                 JSONParser parser = new JSONParser();
@@ -248,7 +249,7 @@ public class ClickRate extends Configured implements Tool {
                 if (Integer.parseInt(currVal) <= 0) {
                     impressions++;
                 } else {
-                    clicks++;
+                    clicks+=Integer.parseInt(currVal);
                 }
             }
 
